@@ -1,0 +1,18 @@
+﻿# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Secrets and local settings
+.env
+
+# Model binaries (never commit; keep only .sha256 files)
+models/**/*.onnx
+models/**/*.pb
+models/**/*.pth
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
