@@ -58,9 +58,7 @@ def check_environment() -> bool:
         print(f"[✓] Available Providers: {providers}")
 
         if "CPUExecutionProvider" in providers:
-            print(
-                "[SUCCESS] CPUExecutionProvider is active and ready for inference!"
-            )
+            print("[SUCCESS] CPUExecutionProvider is active and ready for inference!")
         else:
             print("[FAILED] CPUExecutionProvider not found.")
             return False
