@@ -13,7 +13,7 @@ def check_environment():
     # 1. Check Python version
     py_ver = sys.version.split()[0]
     print(f"[✓] Python Version: {py_ver}")
-    if sys.version_info < (3, 10) or sys.version_info >= (3, 11):
+    if sys.version_info < (3, 12) or sys.version_info >= (3, 13):
         print("    [WARNING] Expected Python 3.10.x for guaranteed ONNX compatibility.")
     
     # 2. Check NumPy
