@@ -1,0 +1,27 @@
+services:
+  ai-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: team1-ai-ml:dev
+    container_name: team1_ai_dev
+    env_file:
+      - .env
+    volumes:
+      # Models are mounted from the host, read-only (never baked into the image)
+      - ./models:/app/models:ro
+      - ./configs:/app/configs:ro
+    # Uncomment when the real service exists (port to be agreed with Team 4):
+    # ports:
+    #   - "${AI_SERVICE_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import cv2, onnxruntime"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2g
+    restart: "no"

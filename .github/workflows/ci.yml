@@ -6,18 +6,29 @@ on:
   push:
     branches: [develop, main]
 
+# The workflow can only read the repository
+permissions:
+  contents: read
+
+# Cancel an older run when a newer push arrives on the same branch
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 # Settings come from GitHub: Settings > Secrets and variables > Actions > Variables
+# If a variable is missing, the default after || is used
 env:
   AI_ENV: ci
-  LOG_LEVEL: ${{ vars.LOG_LEVEL }}
-  MODEL_DIR: ${{ vars.MODEL_DIR }}
-  ONNX_NUM_THREADS: ${{ vars.ONNX_NUM_THREADS }}
+  LOG_LEVEL: ${{ vars.LOG_LEVEL || 'INFO' }}
+  MODEL_DIR: ${{ vars.MODEL_DIR || '/app/models' }}
+  ONNX_NUM_THREADS: ${{ vars.ONNX_NUM_THREADS || '4' }}
 
 jobs:
   # Stage 1: dependencies install and key libraries import
   dependencies:
     name: 1. Dependency validation
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -27,14 +38,15 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt 
+          pip install -r requirements.txt -r requirements-dev.txt
       - name: Check environment
         run: python scripts/verify_env.py
 
-  # Stage 2: style and quality checks
+  # Stage 2: style and quality checks with Ruff
   quality:
-    name: 2. Code quality
+    name: 2. Code quality (Ruff)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: dependencies
     steps:
       - uses: actions/checkout@v4
@@ -42,12 +54,18 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: Install dev tools
+        run: pip install -r requirements-dev.txt
+      - name: Lint (ruff check)
+        run: ruff check src tests scripts
+      - name: Format check (ruff format)
+        run: ruff format --check src tests scripts
 
   # Stage 3: unit tests (no camera or model files needed)
   tests:
     name: 3. Unit tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: quality
     steps:
       - uses: actions/checkout@v4
@@ -55,16 +73,18 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - run: pip install -r requirements.txt 
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
       - name: Run pytest
         run: |
           # Exit code 5 means "no tests found yet"; allow it until tests exist
           pytest tests/ -v || [ $? -eq 5 ]
 
-  # Stage 4: Docker image builds
+  # Stage 4: Docker image builds and starts
   build:
     name: 4. Build validation
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: tests
     steps:
       - uses: actions/checkout@v4
@@ -74,6 +94,7 @@ jobs:
         with:
           context: .
           push: false
+          load: true
           tags: team1-ai-ml:ci
-      # Optional: run the check script inside the image
-      # - run: docker run --rm team1-ai-ml:ci
+      - name: Run the image once (environment check)
+        run: docker run --rm team1-ai-ml:ci
